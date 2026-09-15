@@ -90,21 +90,32 @@ export default function DisplayPage() {
 
   useEffect(() => {
     let active = true;
+    let inFlight = false;
+    const controller = new AbortController();
     async function load() {
+      // Hidden tabs and offline displays do not need background network traffic.
+      if (!active || inFlight || document.hidden || navigator.onLine === false) return;
+      inFlight = true;
       try {
-        const res = await fetch("/api/jamaat", { cache: "no-store" });
+        const res = await fetch("/api/jamaat", {
+          cache: "no-store",
+          signal: controller.signal,
+        });
         if (!res.ok) return;
         const json = await res.json();
         if (active && isValidJamaat(json?.data)) setJamaat(json.data);
-      } catch { /* use fallback */ }
+      } catch { /* Keep the last confirmed times on network failure. */ }
+      finally { inFlight = false; }
     }
     load();
     // The clock ticks locally each second; only admin-set times need polling.
-    // Once per minute avoids 259,200 requests/month per always-on display.
     const id = setInterval(load, 60_000);
-    return () => { active = false; clearInterval(id); };
+    return () => {
+      active = false;
+      clearInterval(id);
+      controller.abort();
+    };
   }, []);
-
   const todayTz     = useMemo(() => todayInMasjidTZ(now, masjid.timezone), [now]);
   const tomorrowTz  = useMemo(() => addDays(todayTz, 1), [todayTz]);
   const adhanToday  = useMemo(() => calcAdhan(todayTz), [todayTz]);
