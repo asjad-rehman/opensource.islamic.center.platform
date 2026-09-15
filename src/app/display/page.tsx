@@ -99,7 +99,9 @@ export default function DisplayPage() {
       } catch { /* use fallback */ }
     }
     load();
-    const id = setInterval(load, 10_000);
+    // The clock ticks locally each second; only admin-set times need polling.
+    // Once per minute avoids 259,200 requests/month per always-on display.
+    const id = setInterval(load, 60_000);
     return () => { active = false; clearInterval(id); };
   }, []);
 
