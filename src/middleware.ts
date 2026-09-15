@@ -7,5 +7,6 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  // Only page requests need the pathname used by the layout.
+  matcher: ["/((?!api(?:/|$)|fonts/|uploads/|screenshots/|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)"],
 };
