@@ -13,17 +13,40 @@
   </style>
 </head>
 <body>
-  <video id="kioskVideo" autoplay muted loop playsinline preload="auto" disablepictureinpicture controlslist="nodownload noplaybackrate nofullscreen">
-    <source src="/gemini_generated_video_77009492.mp4" type="video/mp4" />
-  </video>
+  <video id="kioskVideo" autoplay muted loop playsinline preload="none" poster="/ich.jpeg" disablepictureinpicture controlslist="nodownload noplaybackrate nofullscreen"></video>
   <script>
-    (() => {
+    (async () => {
       const video = document.getElementById('kioskVideo');
+      // Loop a complete local Blob, never the network URL. CacheStorage keeps
+      // the file across page reloads; HTTP caching covers unsupported browsers.
+      const mediaUrl = '/gemini_generated_video_77009492.mp4';
+      let cache;
+      let response;
+      try {
+        cache = await caches.open('ich-kiosk-media-v1');
+        response = await cache.match(mediaUrl);
+      } catch { /* Storage can be unavailable in restricted kiosk browsers. */ }
+      try {
+        if (!response) {
+          response = await fetch(mediaUrl, { cache: 'force-cache' });
+          if (!response.ok || response.status === 206) throw new Error('Incomplete kiosk video');
+          if (cache) {
+            try { await cache.put(mediaUrl, response.clone()); } catch { /* Play the memory copy. */ }
+          }
+        }
+        const blob = await response.blob();
+        if (!blob.size || !blob.type.startsWith('video/')) throw new Error('Invalid kiosk video');
+        video.src = URL.createObjectURL(blob);
+      } catch (error) {
+        // No streaming fallback or retry loop: a failure must not drain bandwidth.
+        console.warn('Kiosk video unavailable', error);
+        return;
+      }
       video.muted = true;
       video.loop = true;
       const play = () => video.play().catch(() => {});
       video.addEventListener('ended', () => { video.currentTime = 0; play(); });
-      document.addEventListener('visibilitychange', () => { if (!document.hidden) play(); });
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) play(); else video.pause(); });
       window.addEventListener('focus', play);
       window.addEventListener('pageshow', play);
       play();
