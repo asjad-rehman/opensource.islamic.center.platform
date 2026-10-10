@@ -97,10 +97,7 @@ export default function DisplayPage() {
       if (!active || inFlight || document.hidden || navigator.onLine === false) return;
       inFlight = true;
       try {
-        const res = await fetch("/api/jamaat", {
-          cache: "no-store",
-          signal: controller.signal,
-        });
+        const res = await fetch("/api/jamaat", { signal: controller.signal });
         if (!res.ok) return;
         const json = await res.json();
         if (active && isValidJamaat(json?.data)) setJamaat(json.data);
