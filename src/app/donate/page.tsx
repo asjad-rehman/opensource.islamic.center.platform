@@ -1,10 +1,10 @@
-import { store } from "@/lib/store";
+import { getCachedSettings } from "@/lib/cached-content";
 import DonateClient from "./donate-client";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function DonatePage() {
-  const settings = await store.getSettings();
+  const settings = await getCachedSettings();
   return (
     <DonateClient
       zeffyOneTimeId={settings.zeffyOneTimeId}

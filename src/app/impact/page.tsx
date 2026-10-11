@@ -1,6 +1,6 @@
 import React from "react";
 import { Metadata } from "next";
-import { store } from "@/lib/store";
+import { getCachedImpact } from "@/lib/cached-content";
 import { GoldLabel, SectionHead, Card, ScrollReveal } from "@/components/ui-primitives";
 import { ICH } from "@/lib/theme";
 
@@ -9,10 +9,10 @@ export const metadata: Metadata = {
   description: "Explore the community programs, charity milestones, and construction updates of the Islamic Center of Hattiesburg.",
 };
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function ImpactPage() {
-  const impactItems = await store.getImpact();
+  const impactItems = await getCachedImpact();
 
   return (
     <div className="page-enter">

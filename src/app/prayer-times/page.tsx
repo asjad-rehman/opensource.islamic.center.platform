@@ -1,4 +1,4 @@
-import { fetchPrayerTimes } from "@/lib/prayer-times";
+import { getCachedPrayerTimes } from "@/lib/cached-content";
 import PrayerTimesClient from "@/components/prayer-times-client";
 import { Metadata } from "next";
 
@@ -7,9 +7,9 @@ export const metadata: Metadata = {
   description: "Daily prayer times and Jumuah schedule for the Islamic Center of Hattiesburg.",
 };
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function PrayerTimesPage() {
-  const { prayerTimes, jamaatTimes, jumuah } = await fetchPrayerTimes();
+  const { prayerTimes, jamaatTimes, jumuah } = await getCachedPrayerTimes();
   return <PrayerTimesClient prayerTimes={prayerTimes} jamaatTimes={jamaatTimes} jumuah={jumuah} />;
 }

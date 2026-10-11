@@ -5,10 +5,11 @@ import { getAdminUser } from "@/lib/auth";
 export const dynamic = "force-dynamic";
 
 // Public GET — settings are needed by frontend pages
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const settings = await store.getSettings();
-    return NextResponse.json({ settings });
+    const fresh = req.nextUrl.searchParams.get("fresh") === "1";
+    return NextResponse.json({ settings }, fresh ? undefined : { headers: { "Cache-Control": "public, max-age=0, must-revalidate", "Vercel-CDN-Cache-Control": "public, s-maxage=60" } });
   } catch {
     return NextResponse.json({ error: "Failed to fetch settings" }, { status: 500 });
   }
