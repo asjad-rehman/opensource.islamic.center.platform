@@ -2,20 +2,20 @@ import React from "react";
 import { Metadata } from "next";
 import { Btn, GoldLabel, SectionHead, Card, ScrollReveal } from "@/components/ui-primitives";
 import { ICH } from "@/lib/theme";
-import { store } from "@/lib/store";
+import { getCachedBoard, getCachedPrograms, getCachedSettings } from "@/lib/cached-content";
 
 export const metadata: Metadata = {
   title: "About Us",
   description: "Learn about the mission, leadership, programs, and New Masjid project at the Islamic Center of Hattiesburg.",
 };
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function AboutPage() {
   const [board, programs, settings] = await Promise.all([
-    store.getBoard(),
-    store.getPrograms(),
-    store.getSettings(),
+    getCachedBoard(),
+    getCachedPrograms(),
+    getCachedSettings(),
   ]);
 
   const activePrograms = programs.filter((p) => p.active);

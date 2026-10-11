@@ -1,13 +1,12 @@
-import { fetchPrayerTimes } from "@/lib/prayer-times";
-import { store } from "@/lib/store";
+import { getCachedPrayerTimes, getCachedSettings } from "@/lib/cached-content";
 import HomeClient from "@/components/home-client";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function HomePage() {
   const [{ prayerTimes, jamaatTimes }, settings] = await Promise.all([
-    fetchPrayerTimes(),
-    store.getSettings(),
+    getCachedPrayerTimes(),
+    getCachedSettings(),
   ]);
   return <HomeClient prayerTimes={prayerTimes} jamaatTimes={jamaatTimes} settings={settings} />;
 }

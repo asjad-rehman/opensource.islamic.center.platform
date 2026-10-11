@@ -5,10 +5,11 @@ import { getAdminUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const resources = await store.getHalalResources(true);
-    return NextResponse.json({ resources });
+    const fresh = req.nextUrl.searchParams.get("fresh") === "1";
+    return NextResponse.json({ resources }, fresh ? undefined : { headers: { "Cache-Control": "public, max-age=0, must-revalidate", "Vercel-CDN-Cache-Control": "public, s-maxage=60" } });
   } catch {
     return NextResponse.json({ error: "Failed to fetch resources" }, { status: 500 });
   }

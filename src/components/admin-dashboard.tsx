@@ -707,7 +707,7 @@ function ResourcesTab() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    fetch("/api/admin/resources")
+    fetch("/api/admin/resources?fresh=1")
       .then(r => r.json())
       .then(d => setResources(d.resources || { restaurants: "", meatSupply: "" }));
   }, []);
@@ -1179,7 +1179,7 @@ function ResourceLinksSection() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
 
-  const load = () => fetch("/api/admin/resource-links").then(r => r.json()).then(d => setLinks(d.links || []));
+  const load = () => fetch("/api/admin/resource-links?fresh=1").then(r => r.json()).then(d => setLinks(d.links || []));
   useEffect(() => { load(); }, []);
 
   const resetForm = () => { setCategory(""); setCategoryIcon("🔗"); setLabel(""); setUrl(""); setOrder(99); setEditingId(null); };
@@ -1334,7 +1334,7 @@ function SettingsTab() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch("/api/admin/settings")
+    fetch("/api/admin/settings?fresh=1")
       .then(r => r.json())
       .then(d => setSettings(d.settings || null));
   }, []);

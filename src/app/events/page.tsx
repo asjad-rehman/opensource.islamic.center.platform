@@ -1,6 +1,6 @@
 import React from "react";
 import { Metadata } from "next";
-import { store } from "@/lib/store";
+import { getCachedEvents } from "@/lib/cached-content";
 import EventsClient, { EventItem } from "@/components/events-client";
 import { parseLocalDate } from "@/lib/utils";
 
@@ -9,11 +9,10 @@ export const metadata: Metadata = {
   description: "Upcoming events at the Islamic Center of Hattiesburg including Jumuah, Eid prayers, halaqas, and community programs.",
 };
 
-// Remove revalidate since we are using memory store
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 async function getEvents(): Promise<EventItem[]> {
-  const rawEvents = await store.getEvents();
+  const rawEvents = await getCachedEvents();
   const events = rawEvents.map(e => ({ ...e })); // Deep copy to avoid mutating store on render
   const today = new Date();
   today.setHours(0, 0, 0, 0);
