@@ -1,3 +1,5 @@
+import { revalidateTag } from "next/cache";
+import { createReadThroughCache } from "./read-through-cache";
 import { randomUUID } from "crypto";
 import { remoteRead, remoteWrite } from "./remote-storage";
 import { parseLocalDate } from "./utils";
@@ -22,6 +24,7 @@ export interface Announcement {
   body: string;
   priority: "normal" | "urgent";
   created_at: string;
+  expiresAt?: string;
 }
 
 export interface BoardMember {
@@ -89,22 +92,14 @@ export interface ResourceLink {
 // write-through save so the store below stays declarative. `seed` is the initial
 // content used when nothing has been persisted yet.
 function makeCollection<T extends { id: string }>(name: string, seed: T[]) {
-  let _mem: T[] | null = null;
-  let _memExpiry = 0;
-
-  async function get(bypassCache = false): Promise<T[]> {
-    const now = Date.now();
-    if (!bypassCache && _mem !== null && now < _memExpiry) return _mem;
-
-    _mem = await remoteRead<T[]>(name, seed);
-    _memExpiry = now + 10000; // 10s TTL
-    return _mem;
-  }
+  const cache = createReadThroughCache(() => remoteRead<T[]>(name, seed));
+  const get = cache.get;
 
   async function save(items: T[]): Promise<void> {
-    _mem = items;
-    _memExpiry = Date.now() + 10000;
+    if (JSON.stringify(cache.peek()) === JSON.stringify(items)) return;
     await remoteWrite<T[]>(name, items);
+    cache.set(items);
+    revalidateTag(`content:${name}`, { expire: 0 });
   }
 
   return { get, save };
@@ -297,16 +292,5 @@ export const store = {
     const current = await _resourceLinks.get(true);
     await _resourceLinks.save(current.filter(x => x.id !== id));
   },
-};
-
-export const memoryStore = {
-  get board()          { return store.getBoard(); },
-  get announcements()  { return store.getAnnouncements(); },
-  get events()         { return store.getEvents(); },
-  get halalResources() { return store.getHalalResources(); },
-  get impact()         { return store.getImpact(); },
-  get settings()       { return store.getSettings(); },
-  get programs()       { return store.getPrograms(); },
-  get resourceLinks()  { return store.getResourceLinks(); },
 };
 

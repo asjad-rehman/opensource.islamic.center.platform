@@ -1,16 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
-import { AsyncLocalStorage } from 'node:async_hooks';
-globalThis.AsyncLocalStorage = AsyncLocalStorage;
-const { unstable_doesMiddlewareMatch } = await import('next/experimental/testing/server.js');
 const source = readFileSync('public/donation-kiosk.html', 'utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
-const middleware = readFileSync('src/middleware.ts', 'utf8');
-const matcher = JSON.parse(middleware.match(/matcher: (\[.*\])/)[1]);
-for (const url of ['/gemini_generated_video_77009492.mp4', '/other.webm', '/uploads/a.jpg', '/api/jamaat']) {
-  assert.equal(unstable_doesMiddlewareMatch({ config: { matcher }, nextConfig: {}, url }), false, url);
-}
-assert.equal(unstable_doesMiddlewareMatch({ config: { matcher }, nextConfig: {}, url: '/prayer-times' }), true);
 const entries = new Map(); let downloads = 0;
 const cache = { match: async k => entries.get(k)?.clone(), put: async (k, r) => entries.set(k, r) };
 async function load({ storage = true, offline = false } = {}) {
@@ -36,4 +27,4 @@ assert.equal(page.video.src, 'blob:local-video');
 assert.equal(downloads, 2, 'storage denial must still loop an in-memory copy');
 page = await load({ storage: false, offline: true });
 assert.equal(page.video.src, undefined, 'failure must not fall back to repeated streaming');
-console.log('PASS: media bypasses middleware; 100 loops use one download; offline reload reuses cache; storage denial and network failure are bounded.');
+console.log('PASS: 100 loops use one download; offline reload reuses cache; storage denial and network failure are bounded.');

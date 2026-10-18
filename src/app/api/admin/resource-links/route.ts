@@ -6,8 +6,8 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const links = await store.getResourceLinks(true);
     const fresh = req.nextUrl.searchParams.get("fresh") === "1";
+    const links = await store.getResourceLinks(fresh);
     return NextResponse.json({ links }, fresh ? undefined : { headers: { "Cache-Control": "public, max-age=0, must-revalidate", "Vercel-CDN-Cache-Control": "public, s-maxage=60" } });
   } catch (e) {
     return NextResponse.json({ error: `Failed to fetch resource links${e instanceof Error && e.message ? ": " + e.message : ""}` }, { status: 500 });

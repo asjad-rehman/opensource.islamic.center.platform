@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { X, Bell } from "lucide-react";
-import { Announcement } from "@/types";
+import type { Announcement } from "@/lib/store";
 
 export default function AnnouncementsBanner() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);

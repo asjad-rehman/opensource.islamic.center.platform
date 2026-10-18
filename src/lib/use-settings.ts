@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createReadThroughCache } from "./read-through-cache";
 import type { SiteSettings } from "./store";
+
+const cache = createReadThroughCache(async (): Promise<SiteSettings> => {
+  const response = await fetch("/api/admin/settings");
+  if (!response.ok) throw new Error("Failed to load settings");
+  const data = await response.json();
+  if (!data.settings) throw new Error("Missing settings");
+  return data.settings;
+}, 60_000);
 
 /**
  * Shared client hook that loads site settings from the public settings API.
@@ -16,11 +25,8 @@ export function useSettings(): SiteSettings | null {
 
   useEffect(() => {
     let active = true;
-    fetch("/api/admin/settings")
-      .then((r) => r.json())
-      .then((d) => {
-        if (active && d.settings) setSettings(d.settings as SiteSettings);
-      })
+    cache.get()
+      .then((value) => { if (active) setSettings(value); })
       .catch(() => {});
     return () => {
       active = false;

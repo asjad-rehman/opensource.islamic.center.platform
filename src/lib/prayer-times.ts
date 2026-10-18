@@ -48,7 +48,7 @@ export async function fetchPrayerTimes(): Promise<MasjidTimes> {
     isha:    fmtDateTime12(adhan.isha, masjid.timezone),
   };
 
-  const jamaat = await getJamaatTimes();
+  const jamaat = await getJamaatTimes(true);
 
   const j1 = jamaat.jummah[0] ?? { khutbah: "12:45", salah: "13:15" };
   const j2 = jamaat.jummah[1];

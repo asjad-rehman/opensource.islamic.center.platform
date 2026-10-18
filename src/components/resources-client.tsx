@@ -1,35 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
+import type { HalalResourcesItem, ResourceLink } from "@/lib/store";
 import { ICH, Btn, GoldLabel, Card } from "./ui-primitives";
 
-interface ResourceLink {
-  id: string;
-  category: string;
-  categoryIcon: string;
-  label: string;
-  url: string;
-  order: number;
-}
-
-export default function ResourcesClient() {
-  const [halalResources, setHalalResources] = useState<any>(null);
-  const [resourceLinks, setResourceLinks] = useState<ResourceLink[]>([]);
-
-  useEffect(() => {
-    // Fetch halal resources
-    fetch("/api/admin/resources")
-      .then((r) => r.json())
-      .then((d) => { if (d.resources) setHalalResources(d.resources); })
-      .catch(console.error);
-
-    // Fetch dynamic resource links
-    fetch("/api/admin/resource-links")
-      .then((r) => r.json())
-      .then((d) => { if (d.links) setResourceLinks(d.links); })
-      .catch(console.error);
-  }, []);
-
+export default function ResourcesClient({ halalResources, resourceLinks }: {
+  halalResources: HalalResourcesItem;
+  resourceLinks: ResourceLink[];
+}) {
   // Group links by category, sorted by order
   const grouped = resourceLinks.reduce<Record<string, { icon: string; links: ResourceLink[] }>>((acc, link) => {
     if (!acc[link.category]) {
