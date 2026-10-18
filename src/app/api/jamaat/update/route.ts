@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Merge with existing so a partial update doesn't wipe untouched fields
-    const existing = await getJamaatTimes();
+    const existing = await getJamaatTimes(true);
     const merged = {
       ...existing,
       ...candidate,

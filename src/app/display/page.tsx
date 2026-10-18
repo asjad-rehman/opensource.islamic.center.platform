@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Coordinates, PrayerTimes } from "adhan";
 import { masjid } from "@/config/masjid";
 import { getPrayerCalculationParameters } from "@/lib/prayer-calculation";
-import { fmt12From24, fmtDateTime12, zonedParts, todayInMasjidTZ, addDays, msToHMS } from "@/lib/time";
+import { fmt12From24, fmtDateTime12, zonedParts, addDays, msToHMS } from "@/lib/time";
 import Image from "next/image";
-import { JamaatTimes } from "@/lib/jamaat";
+import { DEFAULT_JAMAAT, isValidJamaatTimes, type JamaatTimes } from "@/lib/jamaat-schema";
 
 type PrayerKey = "fajr" | "sunrise" | "dhuhr" | "asr" | "maghrib" | "isha";
 type SalahKey = "fajr" | "dhuhr" | "asr" | "maghrib" | "isha";
@@ -21,11 +21,6 @@ const QURAN_AYAHS = [
   { arabic: "ادْعُونِي أَسْتَجِبْ لَكُمْ", english: "Call upon Me, I will respond to you", ref: "40:60" },
   { arabic: "وَإِذَا سَأَلَكَ عِبَادِي عَنِّي فَإِنِّي قَرِيبٌ", english: "And when My servants ask you about Me, indeed I am near", ref: "2:186" },
 ];
-
-const FALLBACK: JamaatTimes = {
-  fajr: "05:30", dhuhr: "12:35", asr: "16:15", maghrib: "17:55", isha: "19:30",
-  jummah: [{ khutbah: "12:45", salah: "13:15" }, { khutbah: "13:15", salah: "13:45" }],
-};
 
 function isFriday(now: Date): boolean {
   const p = zonedParts(now, masjid.timezone);
@@ -63,14 +58,14 @@ function getNextPrayer(now: Date, today: ReturnType<typeof calcAdhan>, tomorrow:
   return { key: "fajr", at: tomorrow.fajr };
 }
 
-function isValidJamaat(x: unknown): x is JamaatTimes {
-  if (!x || typeof x !== "object") return false;
-  const v = x as Record<string, unknown>;
-  return typeof v.fajr === "string" && typeof v.dhuhr === "string" && typeof v.asr === "string" && typeof v.maghrib === "string" && typeof v.isha === "string" && Array.isArray(v.jummah);
+export default function DisplayPage() {
+  const [ready, setReady] = useState(false);
+  useEffect(() => { setReady(true); }, []);
+  return ready ? <DisplayClock /> : <main className="h-screen w-screen bg-[#f5f0e8]" aria-label="Loading prayer display" />;
 }
 
-export default function DisplayPage() {
-  const [jamaat, setJamaat] = useState<JamaatTimes>(FALLBACK);
+function DisplayClock() {
+  const [jamaat, setJamaat] = useState<JamaatTimes>(DEFAULT_JAMAAT);
   const [now, setNow] = useState<Date>(() => new Date());
   const [ayahIndex, setAyahIndex] = useState(0);
   const [ayahFading, setAyahFading] = useState(false);
@@ -100,7 +95,7 @@ export default function DisplayPage() {
         const res = await fetch("/api/jamaat", { signal: controller.signal });
         if (!res.ok) return;
         const json = await res.json();
-        if (active && isValidJamaat(json?.data)) setJamaat(json.data);
+        if (active && isValidJamaatTimes(json?.data)) setJamaat(json.data);
       } catch { /* Keep the last confirmed times on network failure. */ }
       finally { inFlight = false; }
     }
@@ -113,7 +108,9 @@ export default function DisplayPage() {
       controller.abort();
     };
   }, []);
-  const todayTz     = useMemo(() => todayInMasjidTZ(now, masjid.timezone), [now]);
+  // Depend on the calendar date, not the one-second clock tick.
+  const { year, month, day } = zonedParts(now, masjid.timezone);
+  const todayTz = useMemo(() => new Date(year, month - 1, day), [year, month, day]);
   const tomorrowTz  = useMemo(() => addDays(todayTz, 1), [todayTz]);
   const adhanToday  = useMemo(() => calcAdhan(todayTz), [todayTz]);
   const adhanTomorrow = useMemo(() => calcAdhan(tomorrowTz), [tomorrowTz]);

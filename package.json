@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:usage": "node scripts/test-data-usage.mjs",
+    "test:browser-usage": "node scripts/test-browser-usage.mjs",
+    "test:kiosk-media": "node scripts/test-kiosk-media.mjs"
   },
   "dependencies": {
     "@types/bcryptjs": "^2.4.6",

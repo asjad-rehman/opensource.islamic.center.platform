@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React from "react";
+import Image from "next/image";
+import { usePrayerCountdown } from "@/lib/use-prayer-countdown";
 import { ICH, Btn, GoldLabel, SectionHead, ScrollReveal } from "./ui-primitives";
 import { PrayerTimes } from "@/lib/prayer-times";
 import { JamaatTimes } from "@/lib/jamaat";
@@ -112,66 +114,6 @@ function MosqueHero() {
   );
 }
 
-// Prayer countdown hook
-interface PrayerData {
-  name: string;
-  key: string;
-  h: number;
-  m: number;
-  display: string;
-}
-
-function usePrayerCountdown(prayers: PrayerData[]) {
-  const [state, setState] = useState({
-    countdown: "--:--:--",
-    nextName: "",
-    nextIdx: -1,
-    curIdx: -1,
-  });
-
-  useEffect(() => {
-    const tick = () => {
-      const now = new Date();
-      const nowMs = (now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()) * 1000;
-
-      let curIdx = -1;
-      for (let i = 0; i < prayers.length; i++) {
-        if ((prayers[i].h * 3600 + prayers[i].m * 60) * 1000 <= nowMs) {
-          curIdx = i;
-        }
-      }
-
-      const nextIdx = curIdx === prayers.length - 1 ? 0 : curIdx + 1;
-      const next = prayers[nextIdx];
-
-      const target = new Date();
-      target.setHours(next.h, next.m, 0, 0);
-      if (target <= now) {
-        target.setDate(target.getDate() + 1);
-      }
-
-      const diff = target.getTime() - now.getTime();
-      const hh = Math.floor(diff / 3600000);
-      const mm = Math.floor((diff % 3600000) / 60000);
-      const ss = Math.floor((diff % 60000) / 1000);
-      const pad = (n: number) => String(n).padStart(2, "0");
-
-      setState({
-        countdown: `${pad(hh)}:${pad(mm)}:${pad(ss)}`,
-        nextName: next.name,
-        nextIdx,
-        curIdx,
-      });
-    };
-
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [prayers]);
-
-  return state;
-}
-
 interface HomeClientProps {
   prayerTimes: PrayerTimes;
   jamaatTimes: JamaatTimes;
@@ -179,35 +121,13 @@ interface HomeClientProps {
 }
 
 export default function HomeClient({ prayerTimes, jamaatTimes, settings }: HomeClientProps) {
-  // prayerTimes are already formatted 12h strings (from server)
-  // jamaatTimes are 24h "HH:MM" strings from storage
-  // For countdown we need numeric h/m from the ADHAN times (prayerTimes)
-  // prayerTimes come pre-formatted as "HH:MM AM/PM" – parse them back to 24h for countdown
-  const parseDisplay = (s: string) => {
-    const clean = s.replace(/\s?(AM|PM)/i, "").trim();
-    const [h, m] = clean.split(":").map(Number);
-    const isPM = /PM/i.test(s);
-    const isAM = /AM/i.test(s);
-    let hour = h || 0;
-    if (isPM && hour < 12) hour += 12;
-    if (isAM && hour === 12) hour = 0;
-    return { h: hour, m: m || 0 };
-  };
-
-  const f = parseDisplay(prayerTimes.fajr);
-  const s = parseDisplay(prayerTimes.sunrise);
-  const d = parseDisplay(prayerTimes.dhuhr);
-  const a = parseDisplay(prayerTimes.asr);
-  const mg = parseDisplay(prayerTimes.maghrib);
-  const i = parseDisplay(prayerTimes.isha);
-
-  const prayersAll: PrayerData[] = React.useMemo(() => [
-    { name: "Fajr",    key: "fajr",    h: f.h,  m: f.m,  display: prayerTimes.fajr },
-    { name: "Sunrise", key: "sunrise", h: s.h,  m: s.m,  display: prayerTimes.sunrise },
-    { name: "Dhuhr",   key: "dhuhr",   h: d.h,  m: d.m,  display: prayerTimes.dhuhr },
-    { name: "Asr",     key: "asr",     h: a.h,  m: a.m,  display: prayerTimes.asr },
-    { name: "Maghrib", key: "maghrib", h: mg.h, m: mg.m, display: prayerTimes.maghrib },
-    { name: "Isha",    key: "isha",    h: i.h,  m: i.m,  display: prayerTimes.isha },
+  const prayersAll = React.useMemo(() => [
+    { name: "Fajr",    key: "fajr",  display: prayerTimes.fajr },
+    { name: "Sunrise", key: "sunrise",  display: prayerTimes.sunrise },
+    { name: "Dhuhr",   key: "dhuhr",  display: prayerTimes.dhuhr },
+    { name: "Asr",     key: "asr",   display: prayerTimes.asr },
+    { name: "Maghrib", key: "maghrib", display: prayerTimes.maghrib },
+    { name: "Isha",    key: "isha",  display: prayerTimes.isha },
   ], [prayerTimes]);
 
   // Jamaat (Iqama) times formatted to 12h
@@ -217,7 +137,7 @@ export default function HomeClient({ prayerTimes, jamaatTimes, settings }: HomeC
     asr:     fmt12From24(jamaatTimes.asr),
     maghrib: settings.maghribDisplay || "After Adhan",
     isha:    fmt12From24(jamaatTimes.isha),
-  }), [jamaatTimes]);
+  }), [jamaatTimes, settings.maghribDisplay]);
 
   const prayers5 = React.useMemo(() => prayersAll.filter(p => p.key !== "sunrise"), [prayersAll]);
   const { countdown, nextName, nextIdx, curIdx } = usePrayerCountdown(prayersAll);
@@ -346,7 +266,7 @@ export default function HomeClient({ prayerTimes, jamaatTimes, settings }: HomeC
               overflow: "hidden",
               boxShadow: "0 20px 40px rgba(10,50,65,0.15)"
             }}>
-              <img src="/ich.jpeg" alt="Islamic Center of Hattiesburg" style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }} />
+              <Image src="/ich.jpeg" alt="Islamic Center of Hattiesburg" fill sizes="(max-width: 768px) 100vw, 50vw" style={{ objectFit: "cover" }} />
               <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(6,18,23,0.85) 0%, rgba(6,18,23,0.3) 50%, rgba(6,18,23,0.1) 100%)" }} />
               <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column" }}>
                 <span className="arabic-text" style={{ color: "#fff", fontSize: "clamp(28px, 4vw, 36px)", fontWeight: 600, textAlign: "center", textShadow: "0 2px 12px rgba(0,0,0,0.6)", marginTop: "auto", marginBottom: 30 }}>إِنَّمَا يَعْمُرُ مَسَاجِدَ اللَّهِ</span>

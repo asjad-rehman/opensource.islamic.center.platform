@@ -136,13 +136,6 @@ export async function remoteWrite<T>(name: string, data: T): Promise<void> {
     }
   }
 
-  // 2. Write to /tmp (best-effort, not counted as durable)
-  try {
-    writeFileSync(tmpPath, JSON.stringify(data, null, 2), "utf-8");
-  } catch (e) {
-    console.warn(`[remote-storage] /tmp write failed for ${name}:`, e);
-  }
-
   // 3. Commit to GitHub
   const token = getGitHubToken();
   if (token) {
@@ -192,6 +185,14 @@ export async function remoteWrite<T>(name: string, data: T): Promise<void> {
       ? lastDurableError
       : new Error(`Failed to persist ${name}`);
   }
+
+  // Publish the per-instance fallback only after durable persistence succeeds.
+  try {
+    writeFileSync(tmpPath, JSON.stringify(data, null, 2), "utf-8");
+  } catch (e) {
+    console.warn(`[remote-storage] /tmp write failed for ${name}:`, e);
+  }
+
 }
 
 /**
