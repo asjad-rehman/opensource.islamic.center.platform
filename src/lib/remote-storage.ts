@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
 import { Redis } from "@upstash/redis";
+import { revalidateTag } from "next/cache";
 
 // Initialize Redis if credentials are in env (supports Upstash and Vercel KV env vars)
 const redisUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
@@ -192,6 +193,9 @@ export async function remoteWrite<T>(name: string, data: T): Promise<void> {
       ? lastDurableError
       : new Error(`Failed to persist ${name}`);
   }
+  // Expire only this document's cached dependants after persistence completes.
+  // A failed save never evicts the last confirmed public content.
+  revalidateTag(`ich:${name}`, { expire: 0 });
 }
 
 /**
