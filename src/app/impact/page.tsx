@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   description: "Explore the community programs, charity milestones, and construction updates of the Islamic Center of Hattiesburg.",
 };
 
-export const revalidate = 60;
+export const revalidate = 3600;
 
 export default async function ImpactPage() {
   const impactItems = await getCachedImpact();

@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   description: "Learn about the mission, leadership, programs, and New Masjid project at the Islamic Center of Hattiesburg.",
 };
 
-export const revalidate = 60;
+export const revalidate = 3600;
 
 export default async function AboutPage() {
   const [board, programs, settings] = await Promise.all([
