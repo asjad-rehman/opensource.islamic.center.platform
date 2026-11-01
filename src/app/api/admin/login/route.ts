@@ -1,30 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
 import { signToken } from "@/lib/auth";
+import { timingSafeEqual } from "node:crypto";
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const username = body.username?.trim().toLowerCase();
-    const password = body.password?.trim();
+    const username = typeof body?.username === "string" ? body.username.trim().toLowerCase() : "";
+    const password = typeof body?.password === "string" ? body.password : "";
 
     if (!username || !password) {
       return NextResponse.json({ error: "Username and password required" }, { status: 400 });
     }
 
-    const envEmail = process.env.ADMIN_EMAIL;
+    const envEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase() || "ichattiesburg";
+    const envPassword = process.env.ADMIN_PASSWORD;
     const envPasswordHash = process.env.ADMIN_PASSWORD_HASH;
 
     let authenticated = false;
 
-    if (envEmail && envPasswordHash) {
+    if (envPassword) {
+      // A directly configured password takes precedence over a legacy hash.
+      const submitted = Buffer.from(password, "utf8");
+      const configured = Buffer.from(envPassword, "utf8");
+      authenticated = username === envEmail &&
+        submitted.length === configured.length && timingSafeEqual(submitted, configured);
+    } else if (envPasswordHash) {
       const { comparePassword } = await import("@/lib/auth");
-      authenticated = username === envEmail.toLowerCase() && await comparePassword(password, envPasswordHash);
+      authenticated = username === envEmail && await comparePassword(password, envPasswordHash);
     } else {
       authenticated = username === "ichattiesburg" && password === "3223";
       if (authenticated) {
-        console.warn("[admin-login] WARNING: Using fallback credentials. Please configure ADMIN_EMAIL and ADMIN_PASSWORD_HASH in production.");
+        console.warn("[admin-login] WARNING: Using fallback credentials. Please configure ADMIN_EMAIL and ADMIN_PASSWORD in production.");
       }
     }
 
