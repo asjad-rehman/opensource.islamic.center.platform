@@ -112,9 +112,12 @@ Both paths read the same `src/config/masjid.ts` settings, so keep them consisten
 ### Admin authentication
 
 - `POST /api/admin/login` compares the submitted username against `ADMIN_EMAIL`
-  and the password against `ADMIN_PASSWORD_HASH` (bcrypt). On success it sets a
+  and the password directly against `ADMIN_PASSWORD`. No hash generation is needed.
+  `ADMIN_PASSWORD` takes priority; existing `ADMIN_PASSWORD_HASH` (bcrypt) setups
+  remain supported when `ADMIN_PASSWORD` is empty or unset. On success it sets a
   signed JWT (`jsonwebtoken`, 7-day expiry) in an httpOnly `admin_token` cookie.
-- If `ADMIN_EMAIL` / `ADMIN_PASSWORD_HASH` are **unset**, it falls back to a
+- The username defaults to `ichattiesburg` when `ADMIN_EMAIL` is unset.
+- If both `ADMIN_PASSWORD` and `ADMIN_PASSWORD_HASH` are **unset**, it falls back to a
   hard-coded dev login (`ichattiesburg` / `3223`). **Set the env vars in prod.**
 - Write endpoints call `getAdminUser(req)` and 401 without a valid cookie.
   Read (`GET`) endpoints are intentionally public so client components (footer,
@@ -247,7 +250,8 @@ See [`.env.example`](./.env.example) for the annotated template.
 |---|---|---|
 | `JWT_SECRET` | Prod | Signs the admin session cookie |
 | `ADMIN_EMAIL` | Prod | Admin login username (falls back to dev login if unset) |
-| `ADMIN_PASSWORD_HASH` | Prod | bcrypt hash of the admin password |
+| `ADMIN_PASSWORD` | Prod | Your admin password, entered directly; store as a Vercel Secret |
+| `ADMIN_PASSWORD_HASH` | Optional | Legacy bcrypt hash, used only without `ADMIN_PASSWORD` |
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | One backend | Upstash Redis persistence |
 | `KV_REST_API_URL` / `KV_REST_API_TOKEN` | One backend | Vercel KV aliases for the above |
 | `GITHUB_TOKEN` (or `GH_TOKEN` / `GITHUB_PAT`) | One backend | GitHub Contents API persistence — PAT with **Contents: Read and write** |
@@ -257,8 +261,6 @@ Generate secrets:
 ```bash
 # JWT secret
 node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
-# Admin password hash
-node -e "require('bcryptjs').hash('YourSecurePassword', 12).then(console.log)"
 ```
 
 **For production you must configure at least one durable backend** (Redis/KV or a
@@ -313,7 +315,7 @@ dashboard renders inline so misconfiguration is visible.
 1. Push your fork to GitHub.
 2. Vercel → **Add New Project** → import the repo.
 3. Add environment variables (**Settings → Environment Variables**):
-   `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, and **one** durable
+   `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` (your actual password, stored as a Secret), and **one** durable
    storage backend (Vercel KV / Upstash, or a `GITHUB_TOKEN` with
    `Contents: Read and write`).
 4. **Deploy.** After changing env vars, redeploy so the new values take effect.
