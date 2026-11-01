@@ -26,13 +26,13 @@
   {
     "id": "e3",
     "title": "Sunday School",
-    "description": "Islamic education and activities for the youth. (Recurring every week - Currently off for summer)",
+    "description": "Islamic education and activities for the youth. (Recurring every week)",
     "date": "2026-06-14",
     "time": "10:00",
     "endTime": "13:00",
     "location": "ICH Classrooms",
     "category": "community",
-    "featured": true,
+    "featured": false,
     "recurring": true
   }
 ]
