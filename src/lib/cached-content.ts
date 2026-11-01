@@ -16,4 +16,4 @@ export const getCachedSettings = unstable_cache(() => store.getSettings(true), [
 export const getCachedBoard = unstable_cache(() => store.getBoard(true), ["board"], { revalidate: 3600, tags: ["ich:board"] });
 export const getCachedPrograms = unstable_cache(() => store.getPrograms(true), ["programs"], { revalidate: 3600, tags: ["ich:programs"] });
 export const getCachedImpact = unstable_cache(() => store.getImpact(true), ["impact"], { revalidate: 3600, tags: ["ich:impact"] });
-export const getCachedEvents = unstable_cache(() => store.getEvents(), ["events"], { revalidate: 60 });
+export const getCachedEvents = unstable_cache(() => store.getEvents(true), ["events"], { revalidate: 3600, tags: ["ich:events"] });

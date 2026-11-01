@@ -117,9 +117,18 @@ Both paths read the same `src/config/masjid.ts` settings, so keep them consisten
   remain supported when `ADMIN_PASSWORD` is empty or unset. On success it sets a
   signed JWT (`jsonwebtoken`, 7-day expiry) in an httpOnly `admin_token` cookie.
 - The username defaults to `ichattiesburg` when `ADMIN_EMAIL` is unset.
-- If both `ADMIN_PASSWORD` and `ADMIN_PASSWORD_HASH` are **unset**, it falls back to a
-  hard-coded dev login (`ichattiesburg` / `3223`). **Set the env vars in prod.**
-- Write endpoints call `getAdminUser(req)` and 401 without a valid cookie.
+- **Production refuses to log anyone in** unless `ADMIN_PASSWORD` (or
+  `ADMIN_PASSWORD_HASH`) is set, and refuses every session unless `JWT_SECRET`
+  is set (16+ characters). The `ichattiesburg` / `3223` login works only in
+  `next dev`.
+- Sign-in is rate-limited to 10 attempts per IP per 15 minutes (shared through
+  Redis/KV when configured). The cookie is `Secure` in production.
+- Write endpoints call `getAdminUser(req)` and 401 without a valid cookie. Every
+  write payload is validated (`src/lib/validate.ts`): unknown fields are dropped,
+  types and lengths are checked, and links must be `http(s)`, `mailto:` or `tel:`.
+- Uploads accept only JPG/PNG/GIF/WebP (checked by file contents, max 5 MB).
+  Photos uploaded since the last deploy are served from storage via
+  `/api/media/[name]` (a fallback rewrite for `/uploads/*`).
   Read (`GET`) endpoints are intentionally public so client components (footer,
   contact, resources) can fetch settings/content.
 
@@ -235,7 +244,7 @@ npm run dev                    # http://localhost:3000
 
 Scripts: `npm run dev` · `npm run build` · `npm run start` · `npm run lint`.
 
-Without any env vars the site runs with seed content and the dev admin login
+Without any env vars `npm run dev` runs with seed content and the dev admin login
 (`ichattiesburg` / `3223`); edits persist only to `/tmp` locally.
 
 Admin dashboard: `http://localhost:3000/admin`.
@@ -248,13 +257,17 @@ See [`.env.example`](./.env.example) for the annotated template.
 
 | Variable | Required? | Purpose |
 |---|---|---|
-| `JWT_SECRET` | Prod | Signs the admin session cookie |
-| `ADMIN_EMAIL` | Prod | Admin login username (falls back to dev login if unset) |
+| `JWT_SECRET` | Prod | Signs the admin session cookie (16+ chars; admin is disabled without it) |
+| `ADMIN_EMAIL` | Prod | Admin login username (defaults to `ichattiesburg`) |
 | `ADMIN_PASSWORD` | Prod | Your admin password, entered directly; store as a Vercel Secret |
 | `ADMIN_PASSWORD_HASH` | Optional | Legacy bcrypt hash, used only without `ADMIN_PASSWORD` |
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | One backend | Upstash Redis persistence |
 | `KV_REST_API_URL` / `KV_REST_API_TOKEN` | One backend | Vercel KV aliases for the above |
 | `GITHUB_TOKEN` (or `GH_TOKEN` / `GITHUB_PAT`) | One backend | GitHub Contents API persistence — PAT with **Contents: Read and write** |
+| `CONTENT_REPO_OWNER` / `CONTENT_REPO_NAME` / `CONTENT_REPO_BRANCH` | Optional | Repo the GitHub backend writes to (defaults: `asjad-rehman` / `ichattiesburg` / `main`) — set these on a fork |
+
+`vercel.json` skips rebuilds for commits that only change `public/*.json` (content
+saved from the dashboard is read at runtime, so no rebuild is needed).
 
 Generate secrets:
 

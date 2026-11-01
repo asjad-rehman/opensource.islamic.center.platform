@@ -9,6 +9,8 @@ import { LenisProvider } from "@/components/lenis-provider";
 export default function SiteShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   if (pathname === "/display" || pathname.startsWith("/display/")) return children;
+  // The admin area has its own chrome (src/app/admin/layout.tsx).
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) return children;
 
   return (
     <LenisProvider>

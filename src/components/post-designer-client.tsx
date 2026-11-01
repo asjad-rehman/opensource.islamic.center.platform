@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import PostDataPicker, { eventToFields, announcementToFields } from "./admin/post-data-picker";
 import Link from "next/link";
 import { toBlob } from "html-to-image";
 import { ArrowLeft } from "lucide-react";
@@ -458,6 +459,27 @@ export default function PostDesignerClient() {
   const fields = allFields[template];
   const setField = (k: string, v: string) => setAllFields((a) => ({ ...a, [template]: { ...a[template], [k]: v } }));
   const mergeFields = (patch: Fields) => setAllFields((a) => ({ ...a, [template]: { ...a[template], ...patch } }));
+  // Arriving from "Make post" on an event or announcement: pre-fill from it.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const eventId = q.get("event");
+    const annId = q.get("announcement");
+    if (eventId) {
+      fetch("/api/admin/events").then((r) => r.json()).then((d) => {
+        const ev = (d.events || []).find((x: { id: string }) => x.id === eventId);
+        if (!ev) return;
+        setTemplate("event");
+        setAllFields((a) => ({ ...a, event: { ...a.event, ...eventToFields(ev) } }));
+      }).catch(() => {});
+    } else if (annId) {
+      fetch("/api/admin/announcements").then((r) => r.json()).then((d) => {
+        const an = (d.announcements || []).find((x: { id: string }) => x.id === annId);
+        if (!an) return;
+        setTemplate("announcement");
+        setAllFields((a) => ({ ...a, announcement: { ...a.announcement, ...announcementToFields(an) } }));
+      }).catch(() => {});
+    }
+  }, []);
   const resetTpl = () => setAllFields((a) => ({ ...a, [template]: JSON.parse(JSON.stringify(IG_DEFAULTS[template])) }));
 
   const dim = IG_FORMATS[format];
@@ -639,6 +661,7 @@ export default function PostDesignerClient() {
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 13 }}>
               {template === "verse" && <QuranPicker onPick={mergeFields} />}
+              <PostDataPicker template={template} onPick={mergeFields} />
               {IG_TEMPLATES[template].fields.map((k) => (
                 <IgField key={k} label={IG_FIELD_LABELS[k] || k} value={fields[k] || ""} onChange={(v) => setField(k, v)} textarea={["body", "subtitle", "translation", "arabic"].includes(k)} />
               ))}

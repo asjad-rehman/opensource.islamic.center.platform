@@ -5,7 +5,8 @@ import { ICH, Btn, GoldLabel, SectionHead, ScrollReveal } from "./ui-primitives"
 import { PrayerTimes } from "@/lib/prayer-times";
 import { JamaatTimes } from "@/lib/jamaat";
 import { SiteSettings } from "@/lib/store";
-import { fmt12From24 } from "@/lib/time";
+import { fmt12From24, maghribIqamaLabel } from "@/lib/time";
+import { DEFAULT_HERO_TEXT } from "@/lib/site-defaults";
 
 // Mosque Hero SVG
 function MosqueHero() {
@@ -215,7 +216,7 @@ export default function HomeClient({ prayerTimes, jamaatTimes, settings }: HomeC
     fajr:    fmt12From24(jamaatTimes.fajr),
     dhuhr:   fmt12From24(jamaatTimes.dhuhr),
     asr:     fmt12From24(jamaatTimes.asr),
-    maghrib: settings.maghribDisplay || "After Adhan",
+    maghrib: maghribIqamaLabel(jamaatTimes, fmt12From24),
     isha:    fmt12From24(jamaatTimes.isha),
   }), [jamaatTimes]);
 
@@ -254,7 +255,7 @@ export default function HomeClient({ prayerTimes, jamaatTimes, settings }: HomeC
               <span style={{ color: ICH.accent }}>of Hattiesburg</span>
             </h1>
             <p style={{ fontSize: "clamp(15px,1.6vw,18px)", color: "rgba(255,255,255,.78)", lineHeight: 1.8, marginBottom: 36, maxWidth: 460 }}>
-              Serving the Muslim community of Hattiesburg, Mississippi with daily prayers, Islamic education, and community programs since our founding. All are welcome.
+              {settings.heroText || DEFAULT_HERO_TEXT}
             </p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
               <Btn variant="gold" href="/prayer-times" style={{ fontSize: 14 }}>🕌 Prayer Times</Btn>

@@ -1,36 +1,55 @@
-import { getJamaatTimes, saveJamaatTimes, isValidJamaatTimes } from "@/lib/jamaat";
+import { saveJamaatTimes, type JamaatTimes } from "@/lib/jamaat";
 import { NextRequest } from "next/server";
 import { getAdminUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+const NAMES = { fajr: "Fajr", dhuhr: "Dhuhr", asr: "Asr", maghrib: "Maghrib", isha: "Isha" } as const;
+
+function fail(error: string, status = 400) {
+  return Response.json({ ok: false, error }, { status });
+}
+
 export async function POST(req: NextRequest) {
-  const admin = getAdminUser(req);
-  if (!admin) return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+  if (!getAdminUser(req)) return fail("Your session has expired. Please sign in again.", 401);
+
+  const body = await req.json().catch(() => null);
+  const c = (body?.data ?? body) as Record<string, unknown> | null;
+  if (!c || typeof c !== "object") return fail("Invalid request.");
+
+  const afterAdhan = c.maghribAfterAdhan === true;
+  const times: Record<string, string> = {};
+  for (const [key, name] of Object.entries(NAMES)) {
+    const v = typeof c[key] === "string" ? (c[key] as string).trim() : "";
+    if (key === "maghrib" && afterAdhan) { times[key] = TIME_RE.test(v) ? v : ""; continue; }
+    if (!TIME_RE.test(v)) return fail(`Enter a time for ${name}.`);
+    times[key] = v;
+  }
+
+  if (!Array.isArray(c.jummah) || c.jummah.length === 0) return fail("Add at least one Jumuah slot.");
+  if (c.jummah.length > 4) return fail("You can list up to 4 Jumuah slots.");
+  const jummah = [];
+  for (const [i, slot] of (c.jummah as unknown[]).entries()) {
+    const s = slot as Record<string, unknown> | null;
+    const khutbah = typeof s?.khutbah === "string" ? s.khutbah : "";
+    const salah = typeof s?.salah === "string" ? s.salah : "";
+    if (!TIME_RE.test(khutbah) || !TIME_RE.test(salah)) return fail(`Jumuah ${i + 1} needs both a khutbah and a salah time.`);
+    if (salah < khutbah) return fail(`Jumuah ${i + 1}: salah can't be before the khutbah.`);
+    jummah.push({ khutbah, salah });
+  }
+
+  const payload: JamaatTimes = {
+    fajr: times.fajr, dhuhr: times.dhuhr, asr: times.asr, maghrib: times.maghrib, isha: times.isha,
+    maghribAfterAdhan: afterAdhan,
+    jummah,
+  };
 
   try {
-    const body = await req.json();
-    const candidate = body.data ?? body;
-
-    if (!isValidJamaatTimes(candidate)) {
-      return Response.json({ ok: false, error: "Invalid payload — missing required fields" }, { status: 400 });
-    }
-
-    // Merge with existing so a partial update doesn't wipe untouched fields
-    const existing = await getJamaatTimes();
-    const merged = {
-      ...existing,
-      ...candidate,
-      jummah: Array.isArray(candidate.jummah) && candidate.jummah.length
-        ? candidate.jummah
-        : existing.jummah,
-    };
-
-    await saveJamaatTimes(merged);
-    return Response.json({ ok: true });
+    await saveJamaatTimes(payload);
+    return Response.json({ ok: true, updatedAt: new Date().toISOString() });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    console.error("[/api/jamaat/update] save failed:", message);
-    return Response.json({ ok: false, error: message }, { status: 500 });
+    console.error("[/api/jamaat/update] save failed:", err);
+    return fail("Couldn't save the times. Please try again in a moment.", 500);
   }
 }

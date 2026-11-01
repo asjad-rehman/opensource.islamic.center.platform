@@ -21,12 +21,13 @@ export default function AdminLoginForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Login failed");
-      router.push("/admin");
+      const next = new URLSearchParams(window.location.search).get("next");
+      router.push(next && next.startsWith("/admin") ? next : "/admin");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      setError(err instanceof Error && err.message !== "Failed to fetch" ? err.message : "Couldn't reach the server. Check your connection and try again.");
       setLoading(false);
     }
   };
@@ -60,13 +61,16 @@ export default function AdminLoginForm() {
         <p style={{ fontSize: 13, color: ICH.textMuted, marginTop: 4 }}>Restricted access — ICH staff only</p>
       </div>
 
-      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <form onSubmit={handleSubmit} aria-busy={loading} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <div>
           <label style={labelStyle} htmlFor="username">Username</label>
           <input
             id="username"
             type="text"
-            placeholder="ichattiesburg"
+            autoComplete="username"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             required
             value={username}
             onChange={(e) => setUsername(e.target.value)}
@@ -79,7 +83,7 @@ export default function AdminLoginForm() {
           <input
             id="password"
             type="password"
-            placeholder="••••••••"
+            autoComplete="current-password"
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -98,6 +102,7 @@ export default function AdminLoginForm() {
           variant="primary"
           size="lg"
           style={{ width: "100%", justifyContent: "center", marginTop: 4 }}
+          disabled={loading}
         >
           {loading ? "Signing In..." : "Sign In"}
         </Btn>

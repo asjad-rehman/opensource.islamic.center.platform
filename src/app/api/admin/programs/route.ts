@@ -1,59 +1,26 @@
-import { NextRequest, NextResponse } from "next/server";
-import { store } from "@/lib/store";
-import { getAdminUser } from "@/lib/auth";
+import { programsCrud, type Program } from "@/lib/store";
+import { collectionRoutes } from "@/lib/admin-routes";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  try {
-    const programs = await store.getPrograms(true);
-    return NextResponse.json({ programs });
-  } catch (e) {
-    return NextResponse.json({ error: `Failed to fetch programs${e instanceof Error && e.message ? ": " + e.message : ""}` }, { status: 500 });
-  }
-}
+const routes = collectionRoutes<Program>({
+  crud: programsCrud,
+  key: "programs",
+  itemKey: "item",
+  noun: "program",
+  schema: {
+    icon: { type: "string", max: 16 },
+    title: { type: "string", required: true, max: 160 },
+    schedule: { type: "string", max: 200 },
+    note: { type: "string", max: 200, label: "Status note" },
+    description: { type: "text", required: true, max: 2000 },
+    active: { type: "boolean" },
+  },
+  defaults: { icon: "📌", schedule: "", note: "", active: true },
+});
 
-export async function POST(req: NextRequest) {
-  const admin = getAdminUser(req);
-  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  try {
-    const { icon, title, schedule, note = "", description, active = true } = await req.json();
-    if (!title || !description) {
-      return NextResponse.json({ error: "title and description required" }, { status: 400 });
-    }
-    const item = await store.addProgram({ icon: icon || "📌", title, schedule: schedule || "", note, description, active });
-    return NextResponse.json({ success: true, item });
-  } catch (e) {
-    return NextResponse.json({ error: `Failed to add program${e instanceof Error && e.message ? ": " + e.message : ""}` }, { status: 500 });
-  }
-}
-
-export async function PUT(req: NextRequest) {
-  const admin = getAdminUser(req);
-  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  try {
-    const { id, ...updates } = await req.json();
-    if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
-    const item = await store.updateProgram(id, updates);
-    if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    return NextResponse.json({ success: true, item });
-  } catch (e) {
-    return NextResponse.json({ error: `Failed to update program${e instanceof Error && e.message ? ": " + e.message : ""}` }, { status: 500 });
-  }
-}
-
-export async function DELETE(req: NextRequest) {
-  const admin = getAdminUser(req);
-  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  try {
-    const id = new URL(req.url).searchParams.get("id");
-    if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
-    await store.deleteProgram(id);
-    return NextResponse.json({ success: true });
-  } catch (e) {
-    return NextResponse.json({ error: `Failed to delete program${e instanceof Error && e.message ? ": " + e.message : ""}` }, { status: 500 });
-  }
-}
+export const GET = routes.GET;
+export const POST = routes.POST;
+export const PUT = routes.PUT;
+export const PATCH = routes.PATCH;
+export const DELETE = routes.DELETE;

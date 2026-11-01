@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { ICH, Btn, GoldLabel, ScrollReveal } from "./ui-primitives";
 import { PrayerTimes, JumuahSchedule } from "@/lib/prayer-times";
 import { JamaatTimes } from "@/lib/jamaat";
-import { fmt12From24, zonedParts } from "@/lib/time";
+import { fmt12From24, zonedParts, maghribIqamaLabel } from "@/lib/time";
 import { masjid } from "@/config/masjid";
 
 interface PrayerData {
@@ -75,7 +75,7 @@ export default function PrayerTimesClient({ prayerTimes, jamaatTimes, jumuah }: 
     { name: "Fajr",    key: "fajr",    display: prayerTimes.fajr,    jamaat: fmt12From24(jamaatTimes.fajr) },
     { name: "Dhuhr",   key: "dhuhr",   display: prayerTimes.dhuhr,   jamaat: fmt12From24(jamaatTimes.dhuhr) },
     { name: "Asr",     key: "asr",     display: prayerTimes.asr,     jamaat: fmt12From24(jamaatTimes.asr) },
-    { name: "Maghrib", key: "maghrib", display: prayerTimes.maghrib, jamaat: fmt12From24(jamaatTimes.maghrib) },
+    { name: "Maghrib", key: "maghrib", display: prayerTimes.maghrib, jamaat: maghribIqamaLabel(jamaatTimes, fmt12From24) },
     { name: "Isha",    key: "isha",    display: prayerTimes.isha,    jamaat: fmt12From24(jamaatTimes.isha) },
   ], [prayerTimes, jamaatTimes]);
 

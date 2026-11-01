@@ -82,3 +82,20 @@ export function msToHMS(ms: number) {
   const pad = (n: number) => String(n).padStart(2, "0");
   return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
 }
+
+/** Today's date as YYYY-MM-DD in the given time zone. */
+export function todayISOInTZ(timeZone: string, now = new Date()) {
+  const p = zonedParts(now, timeZone);
+  return `${p.year}-${String(p.month).padStart(2, "0")}-${String(p.day).padStart(2, "0")}`;
+}
+
+/** HH:MM (24h) of a Date in the given time zone. */
+export function hhmmInTZ(d: Date, timeZone: string) {
+  const p = zonedParts(d, timeZone);
+  return `${String(p.hour % 24).padStart(2, "0")}:${String(p.minute).padStart(2, "0")}`;
+}
+
+/** Display text for Maghrib iqama — the single source of truth for every page. */
+export function maghribIqamaLabel(j: { maghrib: string; maghribAfterAdhan?: boolean }, fmt: (t: string) => string = fmt12From24) {
+  return j.maghribAfterAdhan ? "After Adhan" : fmt(j.maghrib);
+}
