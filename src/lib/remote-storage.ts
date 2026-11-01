@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { join } from "path";
 import { Redis } from "@upstash/redis";
 import { revalidateTag } from "next/cache";
@@ -17,9 +17,10 @@ function getRedis(): Redis | null {
   return _redis;
 }
 
-const GH_OWNER = "asjad-rehman";
-const GH_REPO = "ichattiesburg";
-const GH_BRANCH = "main";
+// The repository that stores site content. Override these when running a fork.
+const GH_OWNER = process.env.CONTENT_REPO_OWNER || "asjad-rehman";
+const GH_REPO = process.env.CONTENT_REPO_NAME || "ichattiesburg";
+const GH_BRANCH = process.env.CONTENT_REPO_BRANCH || "main";
 
 // Support common naming conventions for the GitHub token
 const getGitHubToken = () => process.env.GITHUB_TOKEN || process.env.GH_TOKEN || process.env.GITHUB_PAT;
@@ -218,11 +219,9 @@ export async function remoteWriteFile(name: string, contentB64: string): Promise
     const publicPath = join(process.cwd(), "public", "uploads", name);
     // ensure dir exists
     const dir = join(process.cwd(), "public", "uploads");
-    if (!existsSync(dir)) {
-      import("fs").then(fs => fs.mkdirSync(dir, { recursive: true }));
-    }
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
     writeFileSync(publicPath, Buffer.from(contentB64, "base64"));
-  } catch (e) {}
+  } catch { /* read-only filesystem in production; GitHub + /tmp cover it */ }
 
   const token = getGitHubToken();
   if (token) {
@@ -257,10 +256,38 @@ export async function remoteWriteFile(name: string, contentB64: string): Promise
         const errBody = await putRes.json().catch(() => ({}));
         throw new Error(`GitHub PUT failed for ${name} (${putRes.status}): ${JSON.stringify(errBody)}`);
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(`[remote-storage] GitHub write error for file ${name}:`, e);
       throw e;
     }
   }
 }
 
+
+/**
+ * Reads an uploaded file that isn't in the deployed build yet (it was uploaded
+ * after the last deploy). Checks this instance's /tmp copy, then GitHub.
+ */
+export async function remoteReadFile(name: string): Promise<Buffer | null> {
+  const tmpPath = `/tmp/ichattiesburg-${name.replace(/\//g, "-")}`;
+  try {
+    if (existsSync(tmpPath)) return readFileSync(tmpPath);
+  } catch { /* ignore */ }
+
+  const token = getGitHubToken();
+  const url = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/public/uploads/${encodeURIComponent(name)}?ref=${GH_BRANCH}`;
+  try {
+    const res = await fetch(url, {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        Accept: "application/vnd.github.raw+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    return Buffer.from(await res.arrayBuffer());
+  } catch {
+    return null;
+  }
+}

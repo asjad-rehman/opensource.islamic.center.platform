@@ -11,8 +11,11 @@ export type JamaatTimes = {
   maghrib: string;
   isha: string;
   jummah: JummahSlot[];
+  /** When true, Maghrib iqama is "After Adhan" and `maghrib` is ignored. */
+  maghribAfterAdhan?: boolean;
   updatedAt?: string;
 };
+
 
 // Guards against a malformed stored document (or a bad admin payload) before we
 // trust it — the five daily times must be strings and jummah must be an array.
@@ -25,7 +28,8 @@ export function isValidJamaatTimes(x: unknown): x is JamaatTimes {
     typeof v.asr     === "string" &&
     typeof v.maghrib === "string" &&
     typeof v.isha    === "string" &&
-    Array.isArray(v.jummah)
+    Array.isArray(v.jummah) &&
+    (v.maghribAfterAdhan === undefined || typeof v.maghribAfterAdhan === "boolean")
   );
 }
 

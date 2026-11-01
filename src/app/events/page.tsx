@@ -3,6 +3,8 @@ import { Metadata } from "next";
 import { getCachedEvents } from "@/lib/cached-content";
 import EventsClient, { EventItem } from "@/components/events-client";
 import { parseLocalDate } from "@/lib/utils";
+import { todayInMasjidTZ } from "@/lib/time";
+import { masjid } from "@/config/masjid";
 
 export const metadata: Metadata = {
   title: "Events",
@@ -14,12 +16,13 @@ export const revalidate = 60;
 async function getEvents(): Promise<EventItem[]> {
   const rawEvents = await getCachedEvents();
   const events = rawEvents.map(e => ({ ...e })); // Deep copy to avoid mutating store on render
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // "Today" in Hattiesburg, not the server's UTC clock — otherwise today's
+  // events disappear at 7pm Central.
+  const today = todayInMasjidTZ(new Date(), masjid.timezone);
 
-  for (let e of events) {
+  for (const e of events) {
     if (e.recurring) {
-      let d = parseLocalDate(e.date);
+      const d = parseLocalDate(e.date);
       // Auto-forward past recurring events to the next upcoming week
       while (d < today) {
         d.setDate(d.getDate() + 7);

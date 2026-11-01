@@ -174,7 +174,7 @@ export default function DisplayPage() {
 
             return (
               <Tile key={t.key} title={t.title} adhan={adhanTime}
-                jamaat={"jamaat" in t && t.jamaat ? fmt12From24(t.jamaat) : undefined}
+                jamaat={t.key === "maghrib" && jamaat.maghribAfterAdhan ? "After Adhan" : "jamaat" in t && t.jamaat ? fmt12From24(t.jamaat) : undefined}
                 highlight={isNext}
                 sunrise={t.key === "fajr" ? fmtDateTime12(adhanToday.sunrise, masjid.timezone) : undefined}
               />

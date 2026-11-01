@@ -3,6 +3,8 @@ import { remoteRead, remoteWrite } from "./remote-storage";
 import { parseLocalDate } from "./utils";
 
 // Types
+export const EVENT_CATEGORIES = ["jumuah", "eid", "halaqa", "fundraiser", "construction", "community", "other"] as const;
+
 export interface EventItem {
   id: string;
   title: string;
@@ -22,6 +24,10 @@ export interface Announcement {
   body: string;
   priority: "normal" | "urgent";
   created_at: string;
+  /** Last day (YYYY-MM-DD, masjid time) the announcement is shown. Empty = no end. */
+  expiresOn?: string;
+  /** Hidden announcements stay in the dashboard but are not shown on the site. */
+  active?: boolean;
 }
 
 export interface BoardMember {
@@ -57,11 +63,13 @@ export interface SiteSettings {
   oakGroveUrl: string;
   zeffyOneTimeId: string;
   zeffyMonthlyId: string;
-  maghribDisplay: string;
+  /** @deprecated Maghrib iqama is now set on the Prayer Times tab (jamaat.maghribAfterAdhan). */
+  maghribDisplay?: string;
   masjidShortName: string;
   footerDescription: string;
   facebookUrl: string;
   instagramUrl: string;
+  heroText?: string;
 }
 
 export interface Program {
@@ -83,6 +91,7 @@ export interface ResourceLink {
   order: number;
 }
 
+export { DEFAULT_HERO_TEXT } from "./site-defaults";
 
 // Each editable content type (events, board, impact, …) is a JSON document in
 // remote storage. This factory gives every one the same read-through cache and
@@ -155,97 +164,67 @@ const _resourceLinks = makeCollection<ResourceLink>("resource_links", [
   { id: "r12", category: "Community & Organizations",  categoryIcon: "🌐", label: "CAIR — Council on American-Islamic Relations", url: "https://www.cair.com",                                        order: 3 },
 ]);
 
+// Generic list operations shared by every collection.
+function crud<T extends { id: string }>(
+  col: ReturnType<typeof makeCollection<T>>,
+  opts: { prepend?: boolean; sort?: (a: T, b: T) => number } = {},
+) {
+  const finish = (items: T[]) => (opts.sort ? [...items].sort(opts.sort) : items);
+  return {
+    list: (bypassCache = false) => col.get(bypassCache),
+    add: async (data: Omit<T, "id">) => {
+      const current = await col.get(true);
+      const item = { ...data, id: randomUUID() } as T;
+      await col.save(finish(opts.prepend ? [item, ...current] : [...current, item]));
+      return item;
+    },
+    update: async (id: string, data: Partial<T>) => {
+      const current = await col.get(true);
+      if (!current.some(x => x.id === id)) return null;
+      const items = finish(current.map(x => (x.id === id ? { ...x, ...data, id } : x)));
+      await col.save(items);
+      return items.find(x => x.id === id) ?? null;
+    },
+    remove: async (id: string) => {
+      const current = await col.get(true);
+      await col.save(current.filter(x => x.id !== id));
+    },
+    /** Reorder to match `ids`; any ids not listed keep their relative order at the end. */
+    reorder: async (ids: string[]) => {
+      const current = await col.get(true);
+      const pos = new Map(ids.map((id, i) => [id, i]));
+      const items = [...current].sort((a, b) => (pos.get(a.id) ?? 1e9) - (pos.get(b.id) ?? 1e9));
+      await col.save(items);
+      return items;
+    },
+  };
+}
+
+const byDate = (a: EventItem, b: EventItem) => parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime();
+
+export const boardCrud         = crud(_board);
+export const announcementsCrud = crud(_announcements, { prepend: true });
+export const eventsCrud        = crud(_events, { sort: byDate });
+export const impactCrud        = crud(_impact, { prepend: true });
+export const programsCrud      = crud(_programs);
+export const resourceLinksCrud = crud(_resourceLinks);
+
 // Public store API
 export const store = {
-  // Board
-  getBoard: async (bypassCache = false) => _board.get(bypassCache),
-  addBoardMember: async (data: Omit<BoardMember, "id">) => {
-    const current = await _board.get(true);
-    const newItem = { ...data, id: randomUUID() };
-    const items = [...current, newItem];
-    await _board.save(items);
-    return newItem;
-  },
-  updateBoardMember: async (id: string, data: Partial<BoardMember>) => {
-    const current = await _board.get(true);
-    const items = current.map(b => b.id === id ? { ...b, ...data } : b);
-    await _board.save(items);
-    return items.find(b => b.id === id) ?? null;
-  },
-  deleteBoardMember: async (id: string) => {
-    const current = await _board.get(true);
-    await _board.save(current.filter(b => b.id !== id));
-  },
+  getBoard: boardCrud.list,
+  getAnnouncements: announcementsCrud.list,
+  getEvents: eventsCrud.list,
+  getImpact: impactCrud.list,
+  getPrograms: programsCrud.list,
+  getResourceLinks: resourceLinksCrud.list,
 
-  // Announcements
-  getAnnouncements: async (bypassCache = false) => _announcements.get(bypassCache),
-  addAnnouncement: async (data: Omit<Announcement, "id" | "created_at">) => {
-    const current = await _announcements.get(true);
-    const item: Announcement = { ...data, id: randomUUID(), created_at: new Date().toISOString() };
-    await _announcements.save([item, ...current]);
-    return item;
-  },
-  updateAnnouncement: async (id: string, data: Partial<Announcement>) => {
-    const current = await _announcements.get(true);
-    const items = current.map(a => a.id === id ? { ...a, ...data } : a);
-    await _announcements.save(items);
-    return items.find(a => a.id === id) ?? null;
-  },
-  deleteAnnouncement: async (id: string) => {
-    const current = await _announcements.get(true);
-    await _announcements.save(current.filter(a => a.id !== id));
-  },
-
-  // Events
-  getEvents: async (bypassCache = false) => _events.get(bypassCache),
-  addEvent: async (data: Omit<EventItem, "id">) => {
-    const current = await _events.get(true);
-    const item: EventItem = { ...data, id: randomUUID() };
-    const items = [...current, item].sort(
-      (a, b) => parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime()
-    );
-    await _events.save(items);
-    return item;
-  },
-  updateEvent: async (id: string, data: Partial<EventItem>) => {
-    const current = await _events.get(true);
-    const items = current
-      .map(e => e.id === id ? { ...e, ...data } : e)
-      .sort((a, b) => parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime());
-    await _events.save(items);
-    return items.find(e => e.id === id) ?? null;
-  },
-  deleteEvent: async (id: string) => {
-    const current = await _events.get(true);
-    await _events.save(current.filter(e => e.id !== id));
-  },
-  // Halal Resources
+  // Halal Resources (singleton)
   getHalalResources: async (bypassCache = false) => (await _halal.get(bypassCache))[0],
   updateHalalResources: async (data: Partial<Omit<HalalResourcesItem, "id">>) => {
     const current = (await _halal.get(true))[0];
-    const updated = { ...current, ...data };
+    const updated = { ...current, ...data, id: "main" as const };
     await _halal.save([updated]);
     return updated;
-  },
-
-  // Impact Stories / Stats
-  getImpact: async (bypassCache = false) => _impact.get(bypassCache),
-  addImpactItem: async (data: Omit<ImpactItem, "id">) => {
-    const current = await _impact.get(true);
-    const item = { ...data, id: randomUUID() };
-    const items = [item, ...current];
-    await _impact.save(items);
-    return item;
-  },
-  updateImpactItem: async (id: string, data: Partial<ImpactItem>) => {
-    const current = await _impact.get(true);
-    const items = current.map(x => x.id === id ? { ...x, ...data } : x);
-    await _impact.save(items);
-    return items.find(x => x.id === id) ?? null;
-  },
-  deleteImpactItem: async (id: string) => {
-    const current = await _impact.get(true);
-    await _impact.save(current.filter(x => x.id !== id));
   },
 
   // Site Settings (singleton)
@@ -255,47 +234,9 @@ export const store = {
   },
   updateSettings: async (data: Partial<Omit<SiteSettings, "id">>) => {
     const current = (await _settings.get(true))[0];
-    const updated = { ...current, ...data };
+    const updated = { ...current, ...data, id: "main" as const };
     await _settings.save([updated]);
     return updated;
-  },
-
-  // Programs / Initiatives
-  getPrograms: async (bypassCache = false) => _programs.get(bypassCache),
-  addProgram: async (data: Omit<Program, "id">) => {
-    const current = await _programs.get(true);
-    const item = { ...data, id: randomUUID() };
-    await _programs.save([...current, item]);
-    return item;
-  },
-  updateProgram: async (id: string, data: Partial<Program>) => {
-    const current = await _programs.get(true);
-    const items = current.map(x => x.id === id ? { ...x, ...data } : x);
-    await _programs.save(items);
-    return items.find(x => x.id === id) ?? null;
-  },
-  deleteProgram: async (id: string) => {
-    const current = await _programs.get(true);
-    await _programs.save(current.filter(x => x.id !== id));
-  },
-
-  // Resource Links
-  getResourceLinks: async (bypassCache = false) => _resourceLinks.get(bypassCache),
-  addResourceLink: async (data: Omit<ResourceLink, "id">) => {
-    const current = await _resourceLinks.get(true);
-    const item = { ...data, id: randomUUID() };
-    await _resourceLinks.save([...current, item]);
-    return item;
-  },
-  updateResourceLink: async (id: string, data: Partial<ResourceLink>) => {
-    const current = await _resourceLinks.get(true);
-    const items = current.map(x => x.id === id ? { ...x, ...data } : x);
-    await _resourceLinks.save(items);
-    return items.find(x => x.id === id) ?? null;
-  },
-  deleteResourceLink: async (id: string) => {
-    const current = await _resourceLinks.get(true);
-    await _resourceLinks.save(current.filter(x => x.id !== id));
   },
 };
 
