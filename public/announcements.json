@@ -1,5 +1,12 @@
 [
   {
+    "title": "Times Have Changed",
+    "body": "The Salah times have changed due to daylight savings. Please check the Prayer Times section",
+    "priority": "normal",
+    "id": "ed64f022-19e9-460d-9451-384c3b1851b7",
+    "created_at": "2026-11-01T02:07:44.817Z"
+  },
+  {
     "title": "Sunday School",
     "body": "Registration for the new school year opens on Sunday 9/13, We start at 11:15 AM\n\nLevel 1: Covers the Arabic alphabet and Books 1 & 2 of Islamic Studies.\n\nLevel 2: Covers Books 3 & 4 of Islamic Studies and Quran reading.\n\nLevel 3: Covers the Seerah (focusing on the manners of Prophet Muhammad ﷺ) and the proofs of Islam.",
     "priority": "normal",
