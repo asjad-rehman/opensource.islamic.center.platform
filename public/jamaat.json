@@ -3,7 +3,7 @@
   "dhuhr": "12:35",
   "asr": "15:45",
   "maghrib": "17:20",
-  "isha": "19:45",
+  "isha": "18:45",
   "maghribAfterAdhan": false,
   "jummah": [
     {
@@ -15,5 +15,5 @@
       "salah": "13:45"
     }
   ],
-  "updatedAt": "2026-11-01T15:18:06.203Z"
+  "updatedAt": "2026-11-01T15:45:00.220Z"
 }
