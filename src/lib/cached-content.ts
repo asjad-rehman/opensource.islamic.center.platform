@@ -2,10 +2,10 @@ import { unstable_cache } from "next/cache";
 import { fetchPrayerTimes } from "@/lib/prayer-times";
 import { store } from "@/lib/store";
 
-// Time-dependent prayer calculations retain their minute refresh. Editable
+// Time-dependent prayer calculations use a five-minute refresh. Editable
 // content is invalidated after a successful save, with an hourly safety refresh.
 export const getCachedPrayerTimes = unstable_cache(fetchPrayerTimes, ["prayer-times"], {
-  revalidate: 60,
+  revalidate: 300,
   tags: ["ich:jamaat"],
 });
 
