@@ -1,5 +1,6 @@
 "use client";
 
+import { useLocalPrayerTimes } from "@/lib/use-local-prayer-times";
 import React, { useState, useEffect } from "react";
 import { ICH, Btn, GoldLabel, SectionHead, ScrollReveal } from "./ui-primitives";
 import { PrayerTimes } from "@/lib/prayer-times";
@@ -179,7 +180,8 @@ interface HomeClientProps {
   settings: SiteSettings;
 }
 
-export default function HomeClient({ prayerTimes, jamaatTimes, settings }: HomeClientProps) {
+export default function HomeClient({ prayerTimes: initialPrayerTimes, jamaatTimes, settings }: HomeClientProps) {
+  const prayerTimes = useLocalPrayerTimes(initialPrayerTimes);
   // prayerTimes are already formatted 12h strings (from server)
   // jamaatTimes are 24h "HH:MM" strings from storage
   // For countdown we need numeric h/m from the ADHAN times (prayerTimes)

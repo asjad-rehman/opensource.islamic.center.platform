@@ -1,5 +1,6 @@
 "use client";
 
+import { useLocalPrayerTimes } from "@/lib/use-local-prayer-times";
 import React, { useState, useEffect } from "react";
 import { ICH, Btn, GoldLabel, ScrollReveal } from "./ui-primitives";
 import { PrayerTimes, JumuahSchedule } from "@/lib/prayer-times";
@@ -70,7 +71,8 @@ interface PrayerTimesClientProps {
   jumuah: JumuahSchedule;
 }
 
-export default function PrayerTimesClient({ prayerTimes, jamaatTimes, jumuah }: PrayerTimesClientProps) {
+export default function PrayerTimesClient({ prayerTimes: initialPrayerTimes, jamaatTimes, jumuah }: PrayerTimesClientProps) {
+  const prayerTimes = useLocalPrayerTimes(initialPrayerTimes);
   const prayers: PrayerData[] = React.useMemo(() => [
     { name: "Fajr",    key: "fajr",    display: prayerTimes.fajr,    jamaat: fmt12From24(jamaatTimes.fajr) },
     { name: "Dhuhr",   key: "dhuhr",   display: prayerTimes.dhuhr,   jamaat: fmt12From24(jamaatTimes.dhuhr) },
