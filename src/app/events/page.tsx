@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   description: "Upcoming events at the Islamic Center of Hattiesburg including Jumuah, Eid prayers, halaqas, and community programs.",
 };
 
-export const revalidate = 300;
+export const revalidate = 43200;
 
 async function getEvents(): Promise<EventItem[]> {
   const rawEvents = await getCachedEvents();

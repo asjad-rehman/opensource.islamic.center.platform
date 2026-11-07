@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description: "Daily prayer times and Jumuah schedule for the Islamic Center of Hattiesburg.",
 };
 
-export const revalidate = 300;
+export const revalidate = 43200;
 
 export default async function PrayerTimesPage() {
   const { prayerTimes, jamaatTimes, jumuah } = await getCachedPrayerTimes();
